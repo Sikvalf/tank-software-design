@@ -3,18 +3,21 @@ package ru.mipt.bit.platformer.model;
 import com.badlogic.gdx.math.GridPoint2;
 import static com.badlogic.gdx.math.MathUtils.isEqual;
 
-public class Tank {
+public class Tank implements Movable {
     private GridPoint2 coordinates;
     private GridPoint2 destinationCoordinates;
     private float movementProgress = 1f;
     private float rotation = 0f;
-    private final float speed = 0.4f;
+    private final float speed;
 
-    public Tank(GridPoint2 startPosition) {
+
+    public Tank(GridPoint2 startPosition, float speed) {
         this.coordinates = new GridPoint2(startPosition);
         this.destinationCoordinates = new GridPoint2(startPosition);
+        this.speed = speed;
     }
 
+    @Override
     public void tryMove(Direction direction, GridPoint2 obstacleCoordinates) {
         if (!isEqual(movementProgress, 1f)) return;
 
@@ -33,8 +36,12 @@ public class Tank {
         }
     }
 
+    @Override
     public GridPoint2 getCoordinates() { return coordinates; }
+    @Override
     public GridPoint2 getDestinationCoordinates() { return destinationCoordinates; }
+    @Override
     public float getMovementProgress() { return movementProgress; }
+    @Override
     public float getRotation() { return rotation; }
 }
