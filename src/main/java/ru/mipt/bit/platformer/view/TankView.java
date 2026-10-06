@@ -3,7 +3,7 @@ package ru.mipt.bit.platformer.view;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
-import ru.mipt.bit.platformer.model.Tank;
+import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.util.TileMovement;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
@@ -18,12 +18,12 @@ public class TankView {
         this.rectangle = createBoundingRectangle(graphics);
     }
 
-    public void render(Batch batch, Tank tank) {
+    public void render(Batch batch, Movable tank) {
         tileMovement.moveRectangleBetweenTileCenters(
-            rectangle,
-            tank.getCoordinates(),
-            tank.getDestinationCoordinates(),
-            tank.getMovementProgress()
+                rectangle,
+                tank.getCoordinates(),
+                tank.getDestinationCoordinates(),
+                tank.getMovementProgress()
         );
         drawTextureRegionUnscaled(batch, graphics, rectangle, tank.getRotation());
     }

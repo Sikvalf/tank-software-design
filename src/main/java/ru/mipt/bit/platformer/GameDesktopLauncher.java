@@ -48,7 +48,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         TiledMapTileLayer groundLayer = getSingleLayer(level);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
-        tank = new Tank(new GridPoint2(1, 1));
+        tank = new Tank(new GridPoint2(1, 1), 0.4f);
         tree = new Tree(new GridPoint2(1, 3));
 
         blueTankTexture = new Texture("images/tank_blue.png");
