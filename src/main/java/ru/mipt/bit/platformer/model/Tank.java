@@ -10,7 +10,6 @@ public class Tank implements Movable {
     private float rotation = 0f;
     private final float speed;
 
-
     public Tank(GridPoint2 startPosition, float speed) {
         this.coordinates = new GridPoint2(startPosition);
         this.destinationCoordinates = new GridPoint2(startPosition);
@@ -18,11 +17,11 @@ public class Tank implements Movable {
     }
 
     @Override
-    public void tryMove(Direction direction, GridPoint2 obstacleCoordinates) {
+    public void tryMove(Direction direction, ObstacleMap obstacles) {
         if (!isEqual(movementProgress, 1f)) return;
 
         GridPoint2 nextCoord = direction.getNextCoordinate(coordinates);
-        if (!nextCoord.equals(obstacleCoordinates)) {
+        if (obstacles.isFree(nextCoord)) {
             destinationCoordinates.set(nextCoord);
             movementProgress = 0f;
         }
