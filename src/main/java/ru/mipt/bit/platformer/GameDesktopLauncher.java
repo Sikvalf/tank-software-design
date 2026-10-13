@@ -12,52 +12,83 @@ import com.badlogic.gdx.maps.MapRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
-import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.Interpolation;
 import ru.mipt.bit.platformer.input.InputHandler;
+import ru.mipt.bit.platformer.level.FileLevelGenerator;
+import ru.mipt.bit.platformer.level.LevelGenerator;
+import ru.mipt.bit.platformer.level.RandomLevelGenerator;
+import ru.mipt.bit.platformer.model.Level;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
 import ru.mipt.bit.platformer.util.TileMovement;
 import ru.mipt.bit.platformer.view.TankView;
 import ru.mipt.bit.platformer.view.TreeView;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
 public class GameDesktopLauncher implements ApplicationListener {
 
+    private static final String DEFAULT_LEVEL_FILE = "levels/level1.txt";
+    private static final int LEVEL_WIDTH = 10;   // размеры совпадают с level.tmx
+    private static final int LEVEL_HEIGHT = 8;
+    private static final int RANDOM_TREE_COUNT = 15;
+    private static final float TANK_SPEED = 0.4f;
+
+    private final LevelGenerator levelGenerator;
+
     private Batch batch;
-    private TiledMap level;
+    private TiledMap map;
     private MapRenderer levelRenderer;
     private TileMovement tileMovement;
 
     private Texture blueTankTexture;
     private Texture greenTreeTexture;
 
+    private Level level;
     private Tank tank;
-    private Tree tree;
     private TankView tankView;
-    private TreeView treeView;
+    private final List<TreeView> treeViews = new ArrayList<>();
+
+    public GameDesktopLauncher(LevelGenerator levelGenerator) {
+        this.levelGenerator = levelGenerator;
+    }
 
     @Override
     public void create() {
         batch = new SpriteBatch();
 
-        level = new TmxMapLoader().load("level.tmx");
-        levelRenderer = createSingleLayerMapRenderer(level, batch);
-        TiledMapTileLayer groundLayer = getSingleLayer(level);
+        map = new TmxMapLoader().load("level.tmx");
+        levelRenderer = createSingleLayerMapRenderer(map, batch);
+        TiledMapTileLayer groundLayer = getSingleLayer(map);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
-        tank = new Tank(new GridPoint2(1, 1), 0.4f);
-        tree = new Tree(new GridPoint2(1, 3));
+        level = levelGenerator.generate();
+        checkLevelFitsMap(level, groundLayer);
+        tank = level.getPlayerTank();
 
         blueTankTexture = new Texture("images/tank_blue.png");
         tankView = new TankView(new TextureRegion(blueTankTexture), tileMovement);
 
         greenTreeTexture = new Texture("images/greenTree.png");
-        treeView = new TreeView(new TextureRegion(greenTreeTexture), groundLayer, new GridPoint2(1, 3));
+        TextureRegion treeRegion = new TextureRegion(greenTreeTexture);
+        for (Tree tree : level.getTrees()) {
+            treeViews.add(new TreeView(treeRegion, groundLayer, tree));
+        }
 
-        Gdx.input.setInputProcessor(new InputHandler(tank, tree));
+        Gdx.input.setInputProcessor(new InputHandler(tank, level));
+    }
+
+    private static void checkLevelFitsMap(Level level, TiledMapTileLayer groundLayer) {
+        if (level.getWidth() > groundLayer.getWidth() || level.getHeight() > groundLayer.getHeight()) {
+            throw new IllegalStateException(String.format(
+                    "Level %dx%d does not fit map %dx%d",
+                    level.getWidth(), level.getHeight(), groundLayer.getWidth(), groundLayer.getHeight()));
+        }
     }
 
     @Override
@@ -71,7 +102,9 @@ public class GameDesktopLauncher implements ApplicationListener {
         levelRenderer.render();
         batch.begin();
         tankView.render(batch, tank);
-        treeView.render(batch, tree);
+        for (TreeView treeView : treeViews) {
+            treeView.render(batch);
+        }
         batch.end();
     }
 
@@ -86,13 +119,22 @@ public class GameDesktopLauncher implements ApplicationListener {
     public void dispose() {
         greenTreeTexture.dispose();
         blueTankTexture.dispose();
-        level.dispose();
+        map.dispose();
         batch.dispose();
     }
+
 
     public static void main(String[] args) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
         config.setWindowedMode(1280, 1024);
-        new Lwjgl3Application(new GameDesktopLauncher(), config);
+        new Lwjgl3Application(new GameDesktopLauncher(chooseLevelGenerator(args)), config);
+    }
+
+    private static LevelGenerator chooseLevelGenerator(String[] args) {
+        if (args.length > 0 && args[0].equals("--random")) {
+            return new RandomLevelGenerator(LEVEL_WIDTH, LEVEL_HEIGHT, RANDOM_TREE_COUNT, TANK_SPEED, new Random());
+        }
+        String path = args.length > 1 && args[0].equals("--file") ? args[1] : DEFAULT_LEVEL_FILE;
+        return new FileLevelGenerator(() -> Gdx.files.internal(path).reader("UTF-8"), TANK_SPEED);
     }
 }

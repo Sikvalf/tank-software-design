@@ -1,8 +1,7 @@
-package ru.mipt.bit.platformer;
+package ru.mipt.bit.platformer.model;
 
 import com.badlogic.gdx.math.GridPoint2;
-import org.junit.jupiter.apiS.Test;
-import ru.mipt.bit.platformer.model.Direction;
+import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DirectionTest {
