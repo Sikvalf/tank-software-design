@@ -4,6 +4,7 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -13,10 +14,15 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.math.Interpolation;
+import ru.mipt.bit.platformer.control.PlayerControlStrategy;
+import ru.mipt.bit.platformer.control.RandomControlStrategy;
+import ru.mipt.bit.platformer.game.Game;
+import ru.mipt.bit.platformer.game.GameFactory;
 import ru.mipt.bit.platformer.input.InputHandler;
 import ru.mipt.bit.platformer.level.FileLevelGenerator;
 import ru.mipt.bit.platformer.level.LevelGenerator;
 import ru.mipt.bit.platformer.level.RandomLevelGenerator;
+import ru.mipt.bit.platformer.level.RandomTanksLevelGenerator;
 import ru.mipt.bit.platformer.model.Level;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
@@ -37,7 +43,10 @@ public class GameDesktopLauncher implements ApplicationListener {
     private static final int LEVEL_WIDTH = 10;   // размеры совпадают с level.tmx
     private static final int LEVEL_HEIGHT = 8;
     private static final int RANDOM_TREE_COUNT = 15;
+    private static final int AI_TANK_COUNT = 5;
     private static final float TANK_SPEED = 0.4f;
+    private static final Color PLAYER_TINT = Color.WHITE;
+    private static final Color AI_TINT = new Color(1f, 0.55f, 0.55f, 1f);
 
     private final LevelGenerator levelGenerator;
 
@@ -49,9 +58,8 @@ public class GameDesktopLauncher implements ApplicationListener {
     private Texture blueTankTexture;
     private Texture greenTreeTexture;
 
-    private Level level;
-    private Tank tank;
-    private TankView tankView;
+    private Game game;
+    private final List<TankView> tankViews = new ArrayList<>();
     private final List<TreeView> treeViews = new ArrayList<>();
 
     public GameDesktopLauncher(LevelGenerator levelGenerator) {
@@ -67,12 +75,21 @@ public class GameDesktopLauncher implements ApplicationListener {
         TiledMapTileLayer groundLayer = getSingleLayer(map);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
-        level = levelGenerator.generate();
+        Level level = levelGenerator.generate();
         checkLevelFitsMap(level, groundLayer);
-        tank = level.getPlayerTank();
+
+        InputHandler inputHandler = new InputHandler();
+        Random aiRandom = new Random();
+        game = GameFactory.create(level,
+                new PlayerControlStrategy(inputHandler),
+                () -> new RandomControlStrategy(aiRandom));
 
         blueTankTexture = new Texture("images/tank_blue.png");
-        tankView = new TankView(new TextureRegion(blueTankTexture), tileMovement);
+        TextureRegion tankRegion = new TextureRegion(blueTankTexture);
+        for (Tank tank : level.getAllTanks()) {
+            Color tint = tank == level.getPlayerTank() ? PLAYER_TINT : AI_TINT;
+            tankViews.add(new TankView(tankRegion, tileMovement, tank, tint));
+        }
 
         greenTreeTexture = new Texture("images/greenTree.png");
         TextureRegion treeRegion = new TextureRegion(greenTreeTexture);
@@ -80,7 +97,7 @@ public class GameDesktopLauncher implements ApplicationListener {
             treeViews.add(new TreeView(treeRegion, groundLayer, tree));
         }
 
-        Gdx.input.setInputProcessor(new InputHandler(tank, level));
+        Gdx.input.setInputProcessor(inputHandler);
     }
 
     private static void checkLevelFitsMap(Level level, TiledMapTileLayer groundLayer) {
@@ -98,10 +115,12 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
-        tank.update(deltaTime);
+        game.update(deltaTime);
         levelRenderer.render();
         batch.begin();
-        tankView.render(batch, tank);
+        for (TankView tankView : tankViews) {
+            tankView.render(batch);
+        }
         for (TreeView treeView : treeViews) {
             treeView.render(batch);
         }
@@ -131,6 +150,10 @@ public class GameDesktopLauncher implements ApplicationListener {
     }
 
     private static LevelGenerator chooseLevelGenerator(String[] args) {
+        return new RandomTanksLevelGenerator(chooseBaseLevelGenerator(args), AI_TANK_COUNT, TANK_SPEED, new Random());
+    }
+
+    private static LevelGenerator chooseBaseLevelGenerator(String[] args) {
         if (args.length > 0 && args[0].equals("--random")) {
             return new RandomLevelGenerator(LEVEL_WIDTH, LEVEL_HEIGHT, RANDOM_TREE_COUNT, TANK_SPEED, new Random());
         }

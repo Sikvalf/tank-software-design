@@ -2,36 +2,47 @@ package ru.mipt.bit.platformer.input;
 
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import ru.mipt.bit.platformer.control.DirectionInput;
 import ru.mipt.bit.platformer.model.Direction;
-import ru.mipt.bit.platformer.model.Movable;
-import ru.mipt.bit.platformer.model.ObstacleMap;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-public class InputHandler extends InputAdapter {
-    private final Map<Integer, Runnable> keyBindings = new HashMap<>();
+/**
+ * Запоминает последнее нажатое направление; стратегия игрока забирает его на следующем кадре.
+ */
+public class InputHandler extends InputAdapter implements DirectionInput {
+    private final Map<Integer, Direction> keyBindings = new HashMap<>();
+    private Direction pendingDirection;
 
-    public InputHandler(Movable tank, ObstacleMap obstacles) {
-        bind(tank, obstacles, Direction.UP, Input.Keys.UP, Input.Keys.W);
-        bind(tank, obstacles, Direction.DOWN, Input.Keys.DOWN, Input.Keys.S);
-        bind(tank, obstacles, Direction.LEFT, Input.Keys.LEFT, Input.Keys.A);
-        bind(tank, obstacles, Direction.RIGHT, Input.Keys.RIGHT, Input.Keys.D);
+    public InputHandler() {
+        bind(Direction.UP, Input.Keys.UP, Input.Keys.W);
+        bind(Direction.DOWN, Input.Keys.DOWN, Input.Keys.S);
+        bind(Direction.LEFT, Input.Keys.LEFT, Input.Keys.A);
+        bind(Direction.RIGHT, Input.Keys.RIGHT, Input.Keys.D);
     }
 
-    private void bind(Movable tank, ObstacleMap obstacles, Direction direction, int... keys) {
+    private void bind(Direction direction, int... keys) {
         for (int key : keys) {
-            keyBindings.put(key, () -> tank.tryMove(direction, obstacles));
+            keyBindings.put(key, direction);
         }
     }
 
     @Override
     public boolean keyDown(int keycode) {
-        Runnable action = keyBindings.get(keycode);
-        if (action != null) {
-            action.run();
+        Direction direction = keyBindings.get(keycode);
+        if (direction != null) {
+            pendingDirection = direction;
             return true;
         }
         return false;
+    }
+
+    @Override
+    public Optional<Direction> pollDirection() {
+        Optional<Direction> result = Optional.ofNullable(pendingDirection);
+        pendingDirection = null;
+        return result;
     }
 }
