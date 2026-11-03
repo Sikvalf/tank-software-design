@@ -4,9 +4,6 @@ import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.model.ObstacleMap;
 
-/**
- * Команда «поехать в направлении»: танк сдвинется, если соседняя клетка свободна.
- */
 public class MoveCommand implements Command {
     private final Movable movable;
     private final Direction direction;

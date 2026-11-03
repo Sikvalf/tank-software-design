@@ -7,9 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Игровая логика без графики: на каждом кадре контроллеры отдают команды, затем танки двигаются.
- */
+
 public class Game {
     private final Level level;
     private final List<TankController> controllers;

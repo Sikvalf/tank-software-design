@@ -3,18 +3,17 @@ package ru.mipt.bit.platformer.input;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import ru.mipt.bit.platformer.control.DirectionInput;
+import ru.mipt.bit.platformer.control.ShootInput;
 import ru.mipt.bit.platformer.model.Direction;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Запоминает последнее нажатое направление; стратегия игрока забирает его на следующем кадре.
- */
-public class InputHandler extends InputAdapter implements DirectionInput {
+public class InputHandler extends InputAdapter implements DirectionInput, ShootInput {
     private final Map<Integer, Direction> keyBindings = new HashMap<>();
     private Direction pendingDirection;
+    private boolean pendingShoot;
 
     public InputHandler() {
         bind(Direction.UP, Input.Keys.UP, Input.Keys.W);
@@ -31,11 +30,17 @@ public class InputHandler extends InputAdapter implements DirectionInput {
 
     @Override
     public boolean keyDown(int keycode) {
+        if (keycode == Input.Keys.SPACE) {
+            pendingShoot = true;
+            return true;
+        }
+
         Direction direction = keyBindings.get(keycode);
         if (direction != null) {
             pendingDirection = direction;
             return true;
         }
+
         return false;
     }
 
@@ -43,6 +48,13 @@ public class InputHandler extends InputAdapter implements DirectionInput {
     public Optional<Direction> pollDirection() {
         Optional<Direction> result = Optional.ofNullable(pendingDirection);
         pendingDirection = null;
+        return result;
+    }
+
+    @Override
+    public boolean pollShoot() {
+        boolean result = pendingShoot;
+        pendingShoot = false;
         return result;
     }
 }
