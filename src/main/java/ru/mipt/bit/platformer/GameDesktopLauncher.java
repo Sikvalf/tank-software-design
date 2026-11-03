@@ -1,3 +1,4 @@
+
 package ru.mipt.bit.platformer;
 
 import com.badlogic.gdx.ApplicationListener;
@@ -23,10 +24,14 @@ import ru.mipt.bit.platformer.level.FileLevelGenerator;
 import ru.mipt.bit.platformer.level.LevelGenerator;
 import ru.mipt.bit.platformer.level.RandomLevelGenerator;
 import ru.mipt.bit.platformer.level.RandomTanksLevelGenerator;
+import ru.mipt.bit.platformer.model.Bullet;
+import ru.mipt.bit.platformer.model.GameObject;
 import ru.mipt.bit.platformer.model.Level;
+import ru.mipt.bit.platformer.model.LevelObserver;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
 import ru.mipt.bit.platformer.util.TileMovement;
+import ru.mipt.bit.platformer.view.BulletView;
 import ru.mipt.bit.platformer.view.TankView;
 import ru.mipt.bit.platformer.view.TreeView;
 
@@ -37,10 +42,10 @@ import java.util.Random;
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
-public class GameDesktopLauncher implements ApplicationListener {
+public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
 
     private static final String DEFAULT_LEVEL_FILE = "levels/level1.txt";
-    private static final int LEVEL_WIDTH = 10;   // размеры совпадают с level.tmx
+    private static final int LEVEL_WIDTH = 10;
     private static final int LEVEL_HEIGHT = 8;
     private static final int RANDOM_TREE_COUNT = 15;
     private static final int AI_TANK_COUNT = 5;
@@ -54,13 +59,20 @@ public class GameDesktopLauncher implements ApplicationListener {
     private TiledMap map;
     private MapRenderer levelRenderer;
     private TileMovement tileMovement;
+    private TiledMapTileLayer groundLayer;
 
     private Texture blueTankTexture;
     private Texture greenTreeTexture;
+    private Texture bulletTexture;
+
+    private TextureRegion tankRegion;
+    private TextureRegion treeRegion;
 
     private Game game;
+
     private final List<TankView> tankViews = new ArrayList<>();
     private final List<TreeView> treeViews = new ArrayList<>();
+    private final List<BulletView> bulletViews = new ArrayList<>();
 
     public GameDesktopLauncher(LevelGenerator levelGenerator) {
         this.levelGenerator = levelGenerator;
@@ -72,7 +84,8 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         map = new TmxMapLoader().load("level.tmx");
         levelRenderer = createSingleLayerMapRenderer(map, batch);
-        TiledMapTileLayer groundLayer = getSingleLayer(map);
+
+        groundLayer = getSingleLayer(map);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
         Level level = levelGenerator.generate();
@@ -80,31 +93,74 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         InputHandler inputHandler = new InputHandler();
         Random aiRandom = new Random();
-        game = GameFactory.create(level,
+
+        game = GameFactory.create(
+                level,
                 new PlayerControlStrategy(inputHandler),
-                () -> new RandomControlStrategy(aiRandom));
+                () -> new RandomControlStrategy(aiRandom, true)
+        );
 
         blueTankTexture = new Texture("images/tank_blue.png");
-        TextureRegion tankRegion = new TextureRegion(blueTankTexture);
-        for (Tank tank : level.getAllTanks()) {
-            Color tint = tank == level.getPlayerTank() ? PLAYER_TINT : AI_TINT;
-            tankViews.add(new TankView(tankRegion, tileMovement, tank, tint));
-        }
-
         greenTreeTexture = new Texture("images/greenTree.png");
-        TextureRegion treeRegion = new TextureRegion(greenTreeTexture);
-        for (Tree tree : level.getTrees()) {
-            treeViews.add(new TreeView(treeRegion, groundLayer, tree));
-        }
+        bulletTexture = BulletView.createTexture();
+
+        tankRegion = new TextureRegion(blueTankTexture);
+        treeRegion = new TextureRegion(greenTreeTexture);
+
+        level.addObserver(this);
 
         Gdx.input.setInputProcessor(inputHandler);
     }
 
-    private static void checkLevelFitsMap(Level level, TiledMapTileLayer groundLayer) {
-        if (level.getWidth() > groundLayer.getWidth() || level.getHeight() > groundLayer.getHeight()) {
+    private static void checkLevelFitsMap(
+            Level level,
+            TiledMapTileLayer groundLayer
+    ) {
+        if (level.getWidth() > groundLayer.getWidth()
+                || level.getHeight() > groundLayer.getHeight()) {
             throw new IllegalStateException(String.format(
                     "Level %dx%d does not fit map %dx%d",
-                    level.getWidth(), level.getHeight(), groundLayer.getWidth(), groundLayer.getHeight()));
+                    level.getWidth(),
+                    level.getHeight(),
+                    groundLayer.getWidth(),
+                    groundLayer.getHeight()
+            ));
+        }
+    }
+
+    @Override
+    public void onObjectAdded(GameObject object) {
+        if (object instanceof Tank) {
+            Tank tank = (Tank) object;
+
+            Color tint = tank == game.getLevel().getPlayerTank()
+                    ? PLAYER_TINT
+                    : AI_TINT;
+
+            tankViews.add(
+                    new TankView(tankRegion, tileMovement, tank, tint)
+            );
+        } else if (object instanceof Tree) {
+            Tree tree = (Tree) object;
+
+            treeViews.add(
+                    new TreeView(treeRegion, groundLayer, tree)
+            );
+        } else if (object instanceof Bullet) {
+            Bullet bullet = (Bullet) object;
+
+            bulletViews.add(
+                    new BulletView(bullet, groundLayer, bulletTexture)
+            );
+        }
+    }
+
+    @Override
+    public void onObjectRemoved(GameObject object) {
+        if (object instanceof Tank) {
+            tankViews.removeIf(view -> view.getTank() == object);
+        } else if (object instanceof Bullet) {
+            bulletViews.removeIf(view -> view.getBullet() == object);
         }
     }
 
@@ -117,47 +173,86 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         game.update(deltaTime);
         levelRenderer.render();
+
         batch.begin();
+
         for (TankView tankView : tankViews) {
             tankView.render(batch);
         }
+
         for (TreeView treeView : treeViews) {
             treeView.render(batch);
         }
+
+        for (BulletView bulletView : bulletViews) {
+            bulletView.render(batch);
+        }
+
         batch.end();
     }
 
     @Override
-    public void resize(int width, int height) {}
+    public void resize(int width, int height) {
+    }
+
     @Override
-    public void pause() {}
+    public void pause() {
+    }
+
     @Override
-    public void resume() {}
+    public void resume() {
+    }
 
     @Override
     public void dispose() {
+        game.getLevel().removeObserver(this);
+
+        bulletTexture.dispose();
         greenTreeTexture.dispose();
         blueTankTexture.dispose();
         map.dispose();
         batch.dispose();
     }
 
-
     public static void main(String[] args) {
-        Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
+        Lwjgl3ApplicationConfiguration config =
+                new Lwjgl3ApplicationConfiguration();
+
         config.setWindowedMode(1280, 1024);
-        new Lwjgl3Application(new GameDesktopLauncher(chooseLevelGenerator(args)), config);
+
+        new Lwjgl3Application(
+                new GameDesktopLauncher(chooseLevelGenerator(args)),
+                config
+        );
     }
 
     private static LevelGenerator chooseLevelGenerator(String[] args) {
-        return new RandomTanksLevelGenerator(chooseBaseLevelGenerator(args), AI_TANK_COUNT, TANK_SPEED, new Random());
+        return new RandomTanksLevelGenerator(
+                chooseBaseLevelGenerator(args),
+                AI_TANK_COUNT,
+                TANK_SPEED,
+                new Random()
+        );
     }
 
     private static LevelGenerator chooseBaseLevelGenerator(String[] args) {
         if (args.length > 0 && args[0].equals("--random")) {
-            return new RandomLevelGenerator(LEVEL_WIDTH, LEVEL_HEIGHT, RANDOM_TREE_COUNT, TANK_SPEED, new Random());
+            return new RandomLevelGenerator(
+                    LEVEL_WIDTH,
+                    LEVEL_HEIGHT,
+                    RANDOM_TREE_COUNT,
+                    TANK_SPEED,
+                    new Random()
+            );
         }
-        String path = args.length > 1 && args[0].equals("--file") ? args[1] : DEFAULT_LEVEL_FILE;
-        return new FileLevelGenerator(() -> Gdx.files.internal(path).reader("UTF-8"), TANK_SPEED);
+
+        String path = args.length > 1 && args[0].equals("--file")
+                ? args[1]
+                : DEFAULT_LEVEL_FILE;
+
+        return new FileLevelGenerator(
+                () -> Gdx.files.internal(path).reader("UTF-8"),
+                TANK_SPEED
+        );
     }
 }

@@ -51,7 +51,7 @@ class InputHandlerTest {
     void unknownKeyIsIgnored() {
         InputHandler handler = new InputHandler();
 
-        assertFalse(handler.keyDown(Input.Keys.SPACE));
+        assertFalse(handler.keyDown(Input.Keys.F1));
         assertEquals(Optional.empty(), handler.pollDirection());
     }
 }

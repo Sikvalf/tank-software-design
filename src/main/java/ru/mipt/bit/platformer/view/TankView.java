@@ -35,4 +35,7 @@ public class TankView {
         drawTextureRegionUnscaled(batch, graphics, rectangle, tank.getRotation());
         batch.setColor(previous);
     }
+    public Movable getTank() {
+        return tank;
+    }
 }
