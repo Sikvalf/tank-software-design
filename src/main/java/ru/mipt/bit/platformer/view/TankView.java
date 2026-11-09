@@ -8,7 +8,7 @@ import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.util.TileMovement;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.*;
 
-public class TankView {
+public class TankView implements Renderable {
     private final TextureRegion graphics;
     private final Rectangle rectangle;
     private final TileMovement tileMovement;
@@ -37,5 +37,8 @@ public class TankView {
     }
     public Movable getTank() {
         return tank;
+    }
+    public Rectangle getRectangle() {
+        return rectangle;
     }
 }

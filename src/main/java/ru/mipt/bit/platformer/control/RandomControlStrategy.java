@@ -4,7 +4,6 @@ import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.model.ObstacleMap;
 import ru.mipt.bit.platformer.model.Shootable;
-
 import java.util.Optional;
 import java.util.Random;
 

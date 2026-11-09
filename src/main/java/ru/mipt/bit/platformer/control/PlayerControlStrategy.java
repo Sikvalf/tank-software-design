@@ -3,7 +3,6 @@ package ru.mipt.bit.platformer.control;
 import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.model.ObstacleMap;
 import ru.mipt.bit.platformer.model.Shootable;
-
 import java.util.Optional;
 
 public class PlayerControlStrategy implements ControlStrategy {

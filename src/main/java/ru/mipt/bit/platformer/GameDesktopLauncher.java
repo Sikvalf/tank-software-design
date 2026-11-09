@@ -1,4 +1,3 @@
-
 package ru.mipt.bit.platformer;
 
 import com.badlogic.gdx.ApplicationListener;
@@ -10,6 +9,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.maps.MapRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
@@ -32,9 +32,10 @@ import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
 import ru.mipt.bit.platformer.util.TileMovement;
 import ru.mipt.bit.platformer.view.BulletView;
+import ru.mipt.bit.platformer.view.HealthBarDecorator;
 import ru.mipt.bit.platformer.view.TankView;
 import ru.mipt.bit.platformer.view.TreeView;
-
+import ru.mipt.bit.platformer.control.ToggleHealthBarsCommand;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -56,6 +57,7 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     private final LevelGenerator levelGenerator;
 
     private Batch batch;
+    private ShapeRenderer shapeRenderer;
     private TiledMap map;
     private MapRenderer levelRenderer;
     private TileMovement tileMovement;
@@ -71,6 +73,7 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     private Game game;
 
     private final List<TankView> tankViews = new ArrayList<>();
+    private final List<HealthBarDecorator> healthBarDecorators = new ArrayList<>();
     private final List<TreeView> treeViews = new ArrayList<>();
     private final List<BulletView> bulletViews = new ArrayList<>();
 
@@ -81,10 +84,10 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     @Override
     public void create() {
         batch = new SpriteBatch();
+        shapeRenderer = new ShapeRenderer();
 
         map = new TmxMapLoader().load("level.tmx");
         levelRenderer = createSingleLayerMapRenderer(map, batch);
-
         groundLayer = getSingleLayer(map);
         tileMovement = new TileMovement(groundLayer, Interpolation.smooth);
 
@@ -92,6 +95,9 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
         checkLevelFitsMap(level, groundLayer);
 
         InputHandler inputHandler = new InputHandler();
+        inputHandler.setToggleHealthBarsCommand(
+                new ToggleHealthBarsCommand(healthBarDecorators)
+        );
         Random aiRandom = new Random();
 
         game = GameFactory.create(
@@ -108,7 +114,6 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
         treeRegion = new TextureRegion(greenTreeTexture);
 
         level.addObserver(this);
-
         Gdx.input.setInputProcessor(inputHandler);
     }
 
@@ -132,20 +137,27 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     public void onObjectAdded(GameObject object) {
         if (object instanceof Tank) {
             Tank tank = (Tank) object;
-
             Color tint = tank == game.getLevel().getPlayerTank()
                     ? PLAYER_TINT
                     : AI_TINT;
 
-            tankViews.add(
-                    new TankView(tankRegion, tileMovement, tank, tint)
+            TankView tankView = new TankView(
+                    tankRegion, tileMovement, tank, tint
             );
+
+            tankViews.add(tankView);
+
+            healthBarDecorators.add(
+                    new HealthBarDecorator(tankView, tank, shapeRenderer)
+            );
+
         } else if (object instanceof Tree) {
             Tree tree = (Tree) object;
 
             treeViews.add(
                     new TreeView(treeRegion, groundLayer, tree)
             );
+
         } else if (object instanceof Bullet) {
             Bullet bullet = (Bullet) object;
 
@@ -159,6 +171,11 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     public void onObjectRemoved(GameObject object) {
         if (object instanceof Tank) {
             tankViews.removeIf(view -> view.getTank() == object);
+
+            healthBarDecorators.removeIf(
+                    decorator -> decorator.getTank() == object
+            );
+
         } else if (object instanceof Bullet) {
             bulletViews.removeIf(view -> view.getBullet() == object);
         }
@@ -170,14 +187,14 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
 
         float deltaTime = Gdx.graphics.getDeltaTime();
-
         game.update(deltaTime);
+
         levelRenderer.render();
 
         batch.begin();
 
-        for (TankView tankView : tankViews) {
-            tankView.render(batch);
+        for (HealthBarDecorator decorator : healthBarDecorators) {
+            decorator.render(batch);
         }
 
         for (TreeView treeView : treeViews) {
@@ -206,12 +223,12 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     @Override
     public void dispose() {
         game.getLevel().removeObserver(this);
-
         bulletTexture.dispose();
         greenTreeTexture.dispose();
         blueTankTexture.dispose();
         map.dispose();
         batch.dispose();
+        shapeRenderer.dispose();
     }
 
     public static void main(String[] args) {
