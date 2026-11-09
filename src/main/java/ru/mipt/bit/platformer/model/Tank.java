@@ -13,7 +13,16 @@ public class Tank implements Movable, Shootable {
     private Direction facing = Direction.RIGHT;
     private final float speed;
     private BulletSpawner bulletSpawner;
-    private int health = 3;
+    private static final int MAX_HEALTH = 100;
+    private int health = MAX_HEALTH;
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int getMaxHealth() {
+        return MAX_HEALTH;
+    }
 
     public Tank(GridPoint2 startPosition, float speed) {
         this.coordinates = new GridPoint2(startPosition);

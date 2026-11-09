@@ -18,8 +18,6 @@ public class Game {
     }
 
     public void update(float deltaTime) {
-        // Команды исполняются по очереди, поэтому два танка не могут
-        // выбрать одну клетку в одном кадре: второй увидит её уже занятой.
         for (TankController controller : controllers) {
             controller.act(level);
         }
