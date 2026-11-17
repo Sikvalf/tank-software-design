@@ -1,0 +1,39 @@
+package ru.mipt.bit.platformer.game;
+
+import ru.mipt.bit.platformer.control.TankController;
+import ru.mipt.bit.platformer.control.Command;
+import ru.mipt.bit.platformer.model.Level;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+
+public class Game {
+    private final Level level;
+    private final List<TankController> controllers;
+
+    public Game(Level level, List<TankController> controllers) {
+        this.level = level;
+        this.controllers = Collections.unmodifiableList(new ArrayList<>(controllers));
+    }
+
+    public void update(float deltaTime) {
+        List<Command> commands = new ArrayList<>();
+        for (TankController controller : controllers) {
+            controller.selectCommand(level).ifPresent(commands::add);
+        }
+        for (Command command : commands) {
+            command.execute();
+        }
+        level.update(deltaTime);
+    }
+
+    public Level getLevel() {
+        return level;
+    }
+
+    public List<TankController> getControllers() {
+        return controllers;
+    }
+}
