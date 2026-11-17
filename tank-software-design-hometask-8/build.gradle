@@ -1,0 +1,34 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
+plugins {
+    id 'application'
+}
+
+apply from: 'versions.gradle'
+
+group 'ru.mipt.bit'
+version '1.0-SNAPSHOT'
+
+application {
+    mainClassName = 'ru.mipt.bit.platformer.GameDesktopLauncher'
+    if (Os.isFamily(Os.FAMILY_MAC)) {
+        applicationDefaultJvmArgs = ['-XstartOnFirstThread']
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation deps.gdx.gdx
+    implementation deps.gdx.backend_lwjgl3
+    implementation deps.gdx.platform_desktop
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
